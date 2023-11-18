@@ -159,8 +159,8 @@ def create_main_window():
     #it's called for updating canvas size where grid_state doesn't change but the canvas does
     def draw_from_tl_to_br(canvas):
         nonlocal top_left, bottom_right, grid_state
-        for i in range(max(top_left[0]-1, 0), min(bottom_right[0]+2, SETTINGS['GRID_SIZE'])):
-            for j in range(max(top_left[1]-1, 0), min(bottom_right[1]+2, SETTINGS['GRID_SIZE'])):
+        for i in range(max(top_left[0], 0), min(bottom_right[0]+1, SETTINGS['GRID_SIZE'])):
+            for j in range(max(top_left[1], 0), min(bottom_right[1]+1, SETTINGS['GRID_SIZE'])):
                 if grid_state[i][j]:
                     cell_size = SETTINGS['CELL_SIZE']
                     x1 = i * cell_size
