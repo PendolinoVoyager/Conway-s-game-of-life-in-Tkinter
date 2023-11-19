@@ -16,6 +16,9 @@ def create_main_window():
         canvas = tk.Canvas(canvas_frame, relief='groove', borderwidth=2, width=SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'], height=SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'])
         canvas.pack(pady=10, expand=True)
         canvas.bind('<Button-1>', lambda event: canvas_click(event))
+        canvas.bind('<Button-3>', lambda event: canvas_scroll(event))
+        canvas.bind('<Button-4>', lambda event: canvas_scroll(event))
+        canvas.bind('<Button-5>', lambda event: canvas_scroll(event))
         return canvas
     #Updates the canvas on grid size setting change.
     def update_canvas_size(action):
@@ -72,6 +75,18 @@ def create_main_window():
             size -= 5
         cell_size_combo.set(size)
         UPDATE_SETTINGS('CELL_SIZE', size)
+        canvas.destroy()
+        canvas = make_canvas(canvas_frame)
+        draw_grid(canvas)
+        draw_from_tl_to_br(canvas)
+    #Canvas scroll work on linux, mouse 3 may work on windows
+    def canvas_scroll(event):
+        nonlocal canvas
+        if event.num == 4:
+            UPDATE_SETTINGS("CELL_SIZE", SETTINGS['CELL_SIZE'] + 1)
+        elif event.num == 5:
+            UPDATE_SETTINGS("CELL_SIZE", SETTINGS['CELL_SIZE'] - 1)
+        cell_size_combo.set(SETTINGS['CELL_SIZE'])
         canvas.destroy()
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
@@ -202,11 +217,11 @@ def create_main_window():
         "alive neighbours an alive cell can have to still live.\n"
         "Cells to come to life describes the ammount of\n"
         "alive neighbours of a dead cell to make it come to life.\n"
-        "Format: numbers 1-8 seperated with a space."
+        "Format: numbers 1-8 seperated with a white space."
         )
         instruction_label = tk.Label(popup, text=rules, justify='left', font=('Arial', 8), width=45)
         instruction_label.pack(pady=5)
-    #An label - entry pair from settings
+    #makes label - entry pair from settings
     def make_settings_option(window, key, default):
         field = tk.Frame(window, border='1', borderwidth=1)
         field.pack(fill=tk.BOTH)
