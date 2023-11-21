@@ -4,36 +4,36 @@ from settings import SETTINGS, UPDATE_SETTINGS
 
 # Define the main window creation function for Conway's Game of Life
 def create_main_window():
-    #Main variables, pseudo-fields in my pseudo-class main window :)
+    #Main variables running the app
     bottom_right = [0, 0]
     top_left = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
     is_running = False
     grid_state = [[0 for _ in range(SETTINGS['GRID_SIZE'])] for _ in range(SETTINGS['GRID_SIZE'])]
+    
 #############################################3
 #CANVAS MANIPULATION MODULE    
-    #Makes the canvas in given canvas frame. Also bings click event. Necessary for remaking the grid after resizing.
+    #Makes the canvas in given canvas frame. Also binds mouse event. Necessary for remaking the grid after resizing.
     def make_canvas(canvas_frame: tk.Frame):
         canvas = tk.Canvas(canvas_frame, relief='groove', borderwidth=2, width=SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'], height=SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'])
         canvas.pack(pady=10, expand=True)
         canvas.bind('<Button-1>', lambda event: canvas_click(event))
-        canvas.bind('<Button-3>', lambda event: canvas_scroll(event))
-        canvas.bind('<Button-4>', lambda event: canvas_scroll(event))
-        canvas.bind('<Button-5>', lambda event: canvas_scroll(event))
+        canvas.bind('<Button-4>', lambda event: [canvas_scroll(event), stop_simulation()])
+        canvas.bind('<Button-5>', lambda event: [canvas_scroll(event), stop_simulation()])
+        canvas.bind('<B1-Motion>', on_drag)
         return canvas
     #Updates the canvas on grid size setting change.
-    def update_canvas_size(action):
-        nonlocal grid_state, canvas, bottom_right
-        if action == "increase":
-            if SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'] < 620:
-                UPDATE_SETTINGS('GRID_SIZE', SETTINGS['GRID_SIZE']+1)
-            else:
-                return
-        elif action == "decrease":
-            if SETTINGS['GRID_SIZE'] > 1:
-                UPDATE_SETTINGS('GRID_SIZE', SETTINGS['GRID_SIZE']-1)
-                bottom_right = [min(bottom_right[0], SETTINGS['GRID_SIZE']), min(bottom_right[1], SETTINGS['GRID_SIZE'])]
-            else:
-                return
+    def update_canvas_size(**actions):
+        nonlocal  grid_state, canvas, bottom_right
+        for action in actions:
+            if action == "increase":
+                if SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'] < 620:
+                    UPDATE_SETTINGS('GRID_SIZE', SETTINGS['GRID_SIZE']+1)
+                else:
+                    return
+            elif action == "decrease":
+                if SETTINGS['GRID_SIZE'] > 1:
+                    UPDATE_SETTINGS('GRID_SIZE', SETTINGS['GRID_SIZE']-1)
+                    bottom_right = [min(bottom_right[0], SETTINGS['GRID_SIZE']), min(bottom_right[1], SETTINGS['GRID_SIZE'])]
         canvas.destroy() 
         grid_state = get_new_grid_state(grid_state)
         canvas = make_canvas(canvas_frame)
@@ -47,20 +47,6 @@ def create_main_window():
             for j in range(min(new_size, len(grid_state[i]))):
                 new_state[i][j] = grid_state[i][j]            
         return new_state
-    #Changes clicked cell state on the canvas
-    def canvas_click(event):
-        nonlocal top_left, bottom_right
-        x, y = event.x, event.y
-        if x < SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'] and y < SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE']:
-            x, y = x // SETTINGS['CELL_SIZE'], y // SETTINGS['CELL_SIZE']
-            top_left = [min(top_left[0], x), min(top_left[1], y)]
-            bottom_right = [max(bottom_right[0], x), max(bottom_right[1], y)]
-            if grid_state[x][y]:
-                grid_state[x][y] = 0
-            else:
-                grid_state[x][y] = 1
-            draw_changed_cell(canvas, x, y)
-
     def kill_all_cells(canvas):
         nonlocal top_left, bottom_right
         bottom_right = [0, 0]
@@ -71,9 +57,6 @@ def create_main_window():
     def change_cell_size(var):
         size = int(var.get())
         nonlocal grid_state, canvas
-        while size * SETTINGS['GRID_SIZE'] > 630:
-            size -= 5
-        cell_size_combo.set(size)
         UPDATE_SETTINGS('CELL_SIZE', size)
         canvas.destroy()
         canvas = make_canvas(canvas_frame)
@@ -91,6 +74,11 @@ def create_main_window():
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
         draw_from_tl_to_br(canvas)
+    #For expand grid button, changes grid size to fill according to cell size
+    def expand_grid():
+        grid_size = 630 // SETTINGS["CELL_SIZE"]
+        UPDATE_SETTINGS('GRID_SIZE',  grid_size)
+        update_canvas_size()
 #######################################3
 #SIMULATION MODULE
     #The function called when we simulate a step in the game
@@ -141,6 +129,7 @@ def create_main_window():
         minus.configure(state='disabled')
         cell_size_combo.configure(state='disabled')
         settings_button.configure(state='disabled')
+        expand_grid_button.configure(state='disabled')
         run_simulation()
     #Opposite of start_simulation
     def stop_simulation():
@@ -152,6 +141,7 @@ def create_main_window():
         plus.configure(state='active')
         minus.configure(state='active')
         settings_button.configure(state='active')
+        expand_grid_button.configure(state='active')
     #Until we change is_running by clicking on stop simulation button, the function will be called each
     #refresh rate interval (or slower if the grid is too large)
     def run_simulation():
@@ -196,9 +186,27 @@ def create_main_window():
             else:
                 cell_color = 'white'
             canvas.create_rectangle(x1, y1, x2, y2, fill=cell_color, outline='gray')
+            
+    def canvas_click(event):
+        nonlocal top_left, bottom_right
+        x, y = event.x, event.y
+        if x < SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'] and y < SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE']:
+            x, y = x // SETTINGS['CELL_SIZE'], y // SETTINGS['CELL_SIZE']
+            top_left = [min(top_left[0], x), min(top_left[1], y)]
+            bottom_right = [max(bottom_right[0], x), max(bottom_right[1], y)]
+            if grid_state[x][y]:
+                grid_state[x][y] = 0
+            else:
+                grid_state[x][y] = 1
+            draw_changed_cell(canvas, x, y)
+    #brush functionality on canvas detects
+    def on_drag(event):
+        x, y = event.x, event.y
+        x, y = x // SETTINGS['CELL_SIZE'], y // SETTINGS['CELL_SIZE']
+        if not grid_state[x][y]:
+            canvas_click(event)
 ##############################################
 #SETTINGS MODULE
-    #Makes to popup window
     def make_settings_window(root: tk.Tk):
         popup = tk.Toplevel(root)
         popup.title("Pop-up Window")
@@ -271,9 +279,9 @@ def create_main_window():
     
     grid_size_label = tk.Label(buttons_frame, text="Grid size", font=button_font, width=button_width, background='gray')
     grid_size_label.grid(row=1,column=0, padx=button_padx)
-    plus = tk.Button(buttons_frame, text="+", font=button_font, width=button_width, command=lambda: update_canvas_size("increase"))
+    plus = tk.Button(buttons_frame, text="+", font=button_font, width=button_width, command=lambda: update_canvas_size(increase=True))
     plus.grid(row=2, column=0, padx=button_padx, pady=button_pady)
-    minus = tk.Button(buttons_frame, text="-", font=button_font, width=button_width, command=lambda: update_canvas_size("decrease"))
+    minus = tk.Button(buttons_frame, text="-", font=button_font, width=button_width, command=lambda: update_canvas_size(decrease=True))
     minus.grid(row=3, column=0, padx=button_padx, pady=button_pady)
     
     cell_sizes = [str(size) for size in range(5, 41,5)]
@@ -295,13 +303,15 @@ def create_main_window():
     start_simulation_button = tk.Button(buttons_frame, text="Run simulation", font=button_font, width=button_width, command=start_simulation)
     start_simulation_button.grid(row=8, column=0, padx=button_padx, pady=button_pady)
     stop_simulation_button = tk.Button(buttons_frame, text="Stop simulation", font=button_font, width=button_width, command=stop_simulation)
-    stop_simulation_button.grid(row=9, column=0, padx=button_padx, pady=button_pady, )
+    stop_simulation_button.grid(row=9, column=0, padx=button_padx, pady=button_pady)
+    expand_grid_button = tk.Button(buttons_frame, text="Expand grid", font=button_font, width=button_width, command= lambda: expand_grid())
+    expand_grid_button.grid(row=10, column=0, padx=button_padx, pady=button_pady)
 
     settings_button = tk.Button(buttons_frame, text="Settings", font=button_font, width=button_width, command=lambda: make_settings_window(root))
-    settings_button.grid(row=10, column=0, padx=button_padx, pady=button_pady, )
+    settings_button.grid(row=11, column=0, padx=button_padx, pady=button_pady, )
 
     kill_button = tk.Button(buttons_frame, text="Kill all cells", font=button_font, width=button_width, command=lambda: kill_all_cells(canvas))
-    kill_button.grid(row=11, column=0, padx=button_padx, pady=button_pady, )
+    kill_button.grid(row=12, column=0, padx=button_padx, pady=button_pady, )
     
     instructions = (
     "Conway's Game of Life Instructions:\n\n"
@@ -316,6 +326,9 @@ def create_main_window():
     "Try experimenting with different settings."
     )
     instruction_label = tk.Label(buttons_frame, text=instructions, justify='left', font=('Arial', 8), width=button_width+20, background='gray')
-    instruction_label.grid(row=12,column=0, padx=button_padx, sticky='e')
+    instruction_label.grid(row=13,column=0, padx=button_padx, sticky='e')
     
     root.mainloop()
+    
+if __name__== "__main__":
+    print ("Please run main.py to run the program.")
