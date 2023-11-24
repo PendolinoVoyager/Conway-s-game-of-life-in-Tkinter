@@ -44,4 +44,4 @@ def UPDATE_SETTINGS(key, value):
         except:
             return
 if __name__== "__main__":
-    print ("Please run main.py to run the program.")
+    print ("Please run main.py to run the program.")   
