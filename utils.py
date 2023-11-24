@@ -10,7 +10,6 @@ def create_main_window():
     top_left = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
     is_running = False
     grid_state = [[0 for _ in range(SETTINGS['GRID_SIZE'])] for _ in range(SETTINGS['GRID_SIZE'])]
-    active_cells = []
     
 #############################################3
 #CANVAS MANIPULATION MODULE    
