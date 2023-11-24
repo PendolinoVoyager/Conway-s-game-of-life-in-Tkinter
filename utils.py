@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter.messagebox import askyesno
 from settings import SETTINGS, UPDATE_SETTINGS
 from time import sleep
-
+import os
 # Define the main window creation function for Conway's Game of Life
 def create_main_window():
     #Main variables running the app
@@ -24,7 +25,7 @@ def create_main_window():
         return canvas
     #Updates the canvas on grid size setting change.
     def update_canvas_size(**actions):
-        nonlocal  grid_state, canvas, bottom_right
+        nonlocal grid_state, canvas, bottom_right
         for action in actions:
             if action == "increase":
                 if SETTINGS['GRID_SIZE']*SETTINGS['CELL_SIZE'] < 620:
@@ -131,6 +132,7 @@ def create_main_window():
         cell_size_combo.configure(state='disabled')
         settings_button.configure(state='disabled')
         expand_grid_button.configure(state='disabled')
+        save_button.configure(state='disabled')
         run_simulation()
     #Opposite of start_simulation
     def stop_simulation():
@@ -143,6 +145,8 @@ def create_main_window():
         minus.configure(state='active')
         settings_button.configure(state='active')
         expand_grid_button.configure(state='active')
+        save_button.configure(state='active')
+
     #Until we change is_running by clicking on stop simulation button, the function will be called each
     #refresh rate interval (or slower if the grid is too large)
     def run_simulation():
@@ -182,7 +186,7 @@ def create_main_window():
             y1 = y * cell_size
             x2 = x1 + cell_size
             y2 = y1 + cell_size
-            if grid_state[int(x)][int(y)]:  
+            if grid_state[x][y]:  
                 cell_color = 'black' 
             else:
                 cell_color = 'white'
@@ -207,6 +211,8 @@ def create_main_window():
         popup = tk.Toplevel(root)
         popup.title("Pop-up Window")
         popup.geometry("300x300") 
+        popup.transient(root)
+        popup.grab_set()
         popup.resizable(False, False)
         popup.configure(close_button=None)
         references = []
@@ -246,11 +252,93 @@ def create_main_window():
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
         draw_from_tl_to_br(canvas)
+###################################################
+    #Saving/loading sessions
+    def save():
+        #Saves the current grid state and settings to a file
+        def save_template(path):
+            file_path = f'templates/{path}.txt'
+            if os.path.exists(file_path):
+                confirmation = askyesno("Confirm overwrite?", f"File {file_path} already exists. Overwrite?")
+                if confirmation:
+                    write_to_file(file_path)
+                else:
+                    return
+            else:
+                write_to_file(file_path)
+        #loads the template and resets basically everything
+        def load_template(path):
+            file_path = f'templates/{path}.txt'
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, 'r') as file:
+                        new_grid_state = []
+                        for index, line in enumerate(file):
+                            if index < len(SETTINGS):
+                                key, value = line.strip().split(';')
+                                print(key, value)
+                                UPDATE_SETTINGS(key, value)
+                            else:
+                                new_grid_state.append(list(map(int, line.split())))
+                    #Could I use prexeisting functions to make it shorter? probably
+                    #Unfortunately the scope of variables is already messed up without compare
+                    nonlocal canvas, canvas_frame, top_left, bottom_right, grid_state
+                    grid_state = new_grid_state
+                    top_left = [0,0]
+                    bottom_right = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
+                    canvas.destroy()
+                    canvas = make_canvas(canvas_frame)
+                    cell_size_combo.set(SETTINGS['CELL_SIZE'])
+                    refresh_rate_slider.set(SETTINGS['REFRESH_RATE'])
+                    draw_grid(canvas)
+                    draw_from_tl_to_br(canvas)
+                    popup.destroy()
+                except Exception as e:
+                    print(f"Error loading template: {e}")
+                    label.config(text="Error loading template. Check console for details.")
+            else:
+                label.config(text="File path doesn't exist.")
+        def write_to_file(file_path):
+            try:
+                with open(file_path, 'w') as file:
+                    write_settings_to_file(file)
+                    write_grid_state_to_file(file, grid_state)
+            except Exception as e:
+                print(f"Error saving template: {e}")
+                label.config(text="Error saving template. Check console for details.")
+            popup.destroy()
+                
+        def write_settings_to_file(file):
+            for setting, value in SETTINGS.items():
+                if not isinstance(value, list):
+                    file.write(f'{setting};{value}\n')
+                else:
+                    values_str = ' '.join(map(str, value))
+                    file.write(f'{setting};{values_str}\n')
+
+        def write_grid_state_to_file(file, grid_state):
+            for row in grid_state:
+                row_str = ' '.join(map(str, row))
+                file.write(f'{row_str}\n')
+
+        popup = tk.Toplevel(root)
+        popup.transient(root)
+        popup.grab_set()
+        label = tk.Label(popup, text="Enter file name")
+        entry = tk.Entry(popup, justify='center')
+        save_button = tk.Button(popup, text="Save", command=lambda: save_template(entry.get()))
+        load_button = tk.Button(popup, text="Load", command=lambda: load_template(entry.get()))
+
+        label.grid(row=0, column=0, columnspan=2)
+        entry.grid(row=1, column=0, columnspan=2)
+        save_button.grid(row = 2, column=0)
+        load_button.grid(row = 2, column=1)
+
 ####################################################
 #WINDOW INITIALIZATION, PLACING THE CANVAS AND BUTTONS
     root = tk.Tk()
     root.title("Conway's Game of Life")
-    root.geometry("900x650")
+    root.geometry("900x670")
     root.resizable(False, False)
 
     canvas_frame = tk.Frame(root)
@@ -263,8 +351,10 @@ def create_main_window():
     root.configure(bg='gray')
     buttons_frame.configure(bg='gray')
     canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-    buttons_frame.pack(side=tk.RIGHT, fill=tk.Y)
-
+    buttons_frame.pack(side=tk.RIGHT, fill=tk.Y, expand=False)
+    
+    buttons_frame.columnconfigure(0, weight=1)
+    buttons_frame.columnconfigure(1, weight=1)
     button_font = ('Arial', 12)
     button_width = 20  
     button_padx = 10   
@@ -290,7 +380,7 @@ def create_main_window():
     cell_size_combo.bind("<<ComboboxSelected>>", lambda event: change_cell_size(cell_size_var))
     
     refresh_rate = tk.DoubleVar()
-    refresh_rate_label = tk.Label(buttons_frame,text="Refresh rate (ms)\n 50ms  1000ms", background='gray' ,font=button_font, width=button_width)
+    refresh_rate_label = tk.Label(buttons_frame,text="Refresh rate (ms)", background='gray' ,font=button_font, width=button_width)
     refresh_rate_label.grid(row=6, column=0, padx=button_padx)
     refresh_rate_slider = ttk.Scale(buttons_frame ,from_=50, to=1000, length=button_width*10, variable=refresh_rate, command= lambda event: UPDATE_SETTINGS('REFRESH_RATE', int(refresh_rate_slider.get())))
     refresh_rate_slider.set(500)
@@ -304,11 +394,14 @@ def create_main_window():
     expand_grid_button = tk.Button(buttons_frame, text="Expand grid", font=button_font, width=button_width, command= lambda: expand_grid())
     expand_grid_button.grid(row=10, column=0, padx=button_padx, pady=button_pady)
 
-    settings_button = tk.Button(buttons_frame, text="Settings", font=button_font, width=button_width, command=lambda: make_settings_window(root))
-    settings_button.grid(row=11, column=0, padx=button_padx, pady=button_pady, )
-
     kill_button = tk.Button(buttons_frame, text="Kill all cells", font=button_font, width=button_width, command=lambda: kill_all_cells(canvas))
-    kill_button.grid(row=12, column=0, padx=button_padx, pady=button_pady, )
+    kill_button.grid(row=11, column=0, padx=button_padx, pady=button_pady)
+    
+    settings_button = tk.Button(buttons_frame, text="Settings", font=button_font, width=button_width, command=lambda: make_settings_window(root))
+    settings_button.grid(row=12, column=0, padx=button_padx, pady=button_pady)
+
+    save_button = tk.Button(buttons_frame, text="Save / load", font=button_font, width=button_width, command=save)
+    save_button.grid(row=13, column=0, padx=button_padx, pady=button_pady)
     
     instructions = (
     "Conway's Game of Life Instructions:\n\n"
@@ -323,7 +416,7 @@ def create_main_window():
     "Try experimenting with different settings."
     )
     instruction_label = tk.Label(buttons_frame, text=instructions, justify='left', font=('Arial', 8), width=button_width+20, background='gray')
-    instruction_label.grid(row=13,column=0, padx=button_padx, sticky='e')
+    instruction_label.grid(row=14,column=0, padx=button_padx, sticky='e')
     
     root.mainloop()
     

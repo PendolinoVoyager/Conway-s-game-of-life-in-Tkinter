@@ -20,6 +20,7 @@ def UPDATE_SETTINGS(key, value):
                     temp_list.append(item)
                 else:
                     continue
+            temp_list = list(set(temp_list))
             SETTINGS[key] = temp_list
         except:
             return
