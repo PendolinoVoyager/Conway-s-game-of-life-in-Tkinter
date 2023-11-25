@@ -95,23 +95,17 @@ def create_main_window():
         new_top_left = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
         new_bottom_right = [0, 0]
         changed_cells = [] 
-        neighbor_counts = [[0 for _ in range(SETTINGS['GRID_SIZE'])] for _ in range(SETTINGS['GRID_SIZE'])]
         for i in range(max(top_left[0]-1, 0), min(bottom_right[0]+2, SETTINGS['GRID_SIZE'])):
             for j in range(max(top_left[1]-1, 0), min(bottom_right[1]+2, SETTINGS['GRID_SIZE'])):
-                neighbor_counts[i][j] = count_alive_neighbours(i, j)
-                print('nei ',neighbor_counts[i][j])
-        for i in range(max(top_left[0]-1, 0), min(bottom_right[0]+2, SETTINGS['GRID_SIZE'])):
-            for j in range(max(top_left[1]-1, 0), min(bottom_right[1]+2, SETTINGS['GRID_SIZE'])):
-                new_state = judgment(i, j, neighbor_counts[i][j])
+                new_state = judgment(i, j)
                 if new_state != grid_state[i][j]:
                     changed_cells.append((i, j))
                     new_top_left = [min(new_top_left[0], i), min(new_top_left[1], j)]
                     new_bottom_right = [max(new_bottom_right[0], i), max(new_bottom_right[1], j)]
-        print(top_left, bottom_right)
-        print(new_top_left, new_bottom_right)
         return  new_top_left, new_bottom_right, changed_cells
     #Judges if a cell stays alive, comes back to life or dies
-    def judgment(x, y, alive_neighbours):
+    def judgment(x, y):
+        alive_neighbours = count_alive_neighbours(x, y)
         if not grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_COME_TO_LIFE']:
             return 1
         if grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_STAY_ALIVE']:
@@ -250,13 +244,15 @@ def create_main_window():
         nonlocal canvas, grid_state
         for key, entry in references:
             UPDATE_SETTINGS(key, entry.get())
+        cell_size_combo.set(SETTINGS['CELL_SIZE'])
+        refresh_rate_slider.set(SETTINGS['REFRESH_RATE'])
         canvas.destroy() 
         grid_state = get_new_grid_state(grid_state)
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
         draw_all(canvas)
 ###################################################
-#Saving/loading sessions module
+#Templates module
     def make_templates_window():
         #Saves the current grid state and settings to a file
         def save_template(path):
@@ -301,6 +297,7 @@ def create_main_window():
                     write_grid_state_to_file(file, grid_state)
             except Exception as e:
                 label.config(text="Error saving template.")
+                return
             popup.destroy()
                 
         def write_settings_to_file(file):

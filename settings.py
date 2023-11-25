@@ -37,23 +37,19 @@ def UPDATE_SETTINGS(key, value):
             if value <= 0:
                 return
             if key == 'GRID_SIZE':
+                if value > 315:
+                    value = 315
                 SETTINGS[key] = value
                 while value * SETTINGS['CELL_SIZE'] > 630:
                     SETTINGS['CELL_SIZE'] -= 1
-                    if SETTINGS['CELL_SIZE'] == 2:
-                        SETTINGS[key] = 315
-                        return
             if key == 'CELL_SIZE':
                 if value > 200:
                     value = 200
                 elif value < 2:
                     value = 2
+                if value * SETTINGS['GRID_SIZE'] > 630:
+                    return
                 SETTINGS[key] = value
-                while value * SETTINGS['GRID_SIZE'] > 630:
-                    SETTINGS['GRID_SIZE'] -= 1
-                    if SETTINGS['GRID_SIZE'] == 1:
-                        SETTINGS['CELL_SIZE'] = 630
-                        return
             else:
                 SETTINGS[key] = value
         except:
