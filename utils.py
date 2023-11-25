@@ -214,7 +214,7 @@ def create_main_window():
 #SETTINGS MODULE
     def make_settings_window(root: tk.Tk):
         popup = tk.Toplevel(root)
-        popup.title("Pop-up Window")
+        popup.title("Settings Window")
         popup.geometry("300x300") 
         popup.transient(root)
         popup.grab_set()
