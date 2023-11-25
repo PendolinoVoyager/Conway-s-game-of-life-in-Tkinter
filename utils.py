@@ -4,7 +4,7 @@ from tkinter.messagebox import askyesno
 from settings import SETTINGS, UPDATE_SETTINGS
 from time import sleep
 import os
-# Define the main window creation function for Conway's Game of Life
+#Main window creation function for Conway's Game of Life
 def create_main_window():
     #Main variables running the app
     bottom_right = [0, 0]
@@ -94,33 +94,35 @@ def create_main_window():
         nonlocal grid_state, top_left, bottom_right
         new_top_left = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
         new_bottom_right = [0, 0]
-        new_grid = [[0 for _ in range(SETTINGS['GRID_SIZE'])] for _ in range(SETTINGS['GRID_SIZE'])]
         changed_cells = [] 
         for i in range(max(top_left[0]-1, 0), min(bottom_right[0]+2, SETTINGS['GRID_SIZE'])):
             for j in range(max(top_left[1]-1, 0), min(bottom_right[1]+2, SETTINGS['GRID_SIZE'])):
                 new_state = judgment(i, j)
                 if new_state != grid_state[i][j]:
                     changed_cells.append((i, j))
-                if new_state:
-                    new_top_left = [min(new_top_left[0], i), min(new_top_left[1], j)]
-                    new_bottom_right = [max(new_bottom_right[0], i), max(new_bottom_right[1], j)]
-                new_grid[i][j] = new_state
-        return new_grid, new_top_left, new_bottom_right, changed_cells
+                    if new_state:
+                        new_top_left = [min(new_top_left[0], i), min(new_top_left[1], j)]
+                        new_bottom_right = [max(new_bottom_right[0], i), max(new_bottom_right[1], j)]
+                    grid_state[i][j] = new_state
+        return grid_state, new_top_left, new_bottom_right, changed_cells
     #Judges if a cell stays alive, comes back to life or dies
     def judgment(x, y):
         alive_neighbours = count_alive_neighbours(x, y)
         if not grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_COME_TO_LIFE']:
             return 1
-        elif grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_STAY_ALIVE']:
+        if grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_STAY_ALIVE']:
             return 1
         return 0
-    def count_alive_neighbours( x, y):
+    
+    def count_alive_neighbours(x, y):
         alive_neighbors = 0
         for i in range(max(0, x-1), min(SETTINGS['GRID_SIZE'], x+2)):
             for j in range(max(0, y-1), min(SETTINGS['GRID_SIZE'], y+2)):
-                if (i, j) != (x, y):
-                    alive_neighbors += grid_state[i][j]
+                alive_neighbors += grid_state[i][j]
+        if grid_state[x][y] == 1:
+            alive_neighbors -= 1
         return alive_neighbors
+
     #Sets the is_rinning variable to True and locks the buttons to stop the user from messing things up
     def start_simulation(): 
         nonlocal is_running 
@@ -201,7 +203,7 @@ def create_main_window():
             bottom_right = [max(bottom_right[0], x), max(bottom_right[1], y)]
             if event.type == '4': #event 4 is single click
                 grid_state[x][y] = 0 if grid_state[x][y] else 1
-                sleep(0.03) #prevents slight movement from immediately calling mouse drag event
+                sleep(0.06) #prevents slight movement from immediately calling mouse drag event
             else:
                 grid_state[x][y] = 1
             draw_changed_cell(canvas, x, y)
@@ -253,7 +255,7 @@ def create_main_window():
         draw_grid(canvas)
         draw_from_tl_to_br(canvas)
 ###################################################
-    #Saving/loading sessions
+#Saving/loading sessions
     def save():
         #Saves the current grid state and settings to a file
         def save_template(path):
@@ -276,26 +278,19 @@ def create_main_window():
                         for index, line in enumerate(file):
                             if index < len(SETTINGS):
                                 key, value = line.strip().split(';')
-                                print(key, value)
                                 UPDATE_SETTINGS(key, value)
                             else:
                                 new_grid_state.append(list(map(int, line.split())))
-                    #Could I use prexeisting functions to make it shorter? probably
-                    #Unfortunately the scope of variables is already messed up without compare
-                    nonlocal canvas, canvas_frame, top_left, bottom_right, grid_state
+                    nonlocal top_left, bottom_right, grid_state
                     grid_state = new_grid_state
                     top_left = [0,0]
                     bottom_right = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
-                    canvas.destroy()
-                    canvas = make_canvas(canvas_frame)
                     cell_size_combo.set(SETTINGS['CELL_SIZE'])
                     refresh_rate_slider.set(SETTINGS['REFRESH_RATE'])
-                    draw_grid(canvas)
-                    draw_from_tl_to_br(canvas)
+                    update_canvas_size()
                     popup.destroy()
-                except Exception as e:
-                    print(f"Error loading template: {e}")
-                    label.config(text="Error loading template. Check console for details.")
+                except:
+                    label.config(text="Error loading template.")
             else:
                 label.config(text="File path doesn't exist.")
         def write_to_file(file_path):
@@ -304,8 +299,7 @@ def create_main_window():
                     write_settings_to_file(file)
                     write_grid_state_to_file(file, grid_state)
             except Exception as e:
-                print(f"Error saving template: {e}")
-                label.config(text="Error saving template. Check console for details.")
+                label.config(text="Error saving template.")
             popup.destroy()
                 
         def write_settings_to_file(file):
@@ -352,23 +346,27 @@ def create_main_window():
     buttons_frame.configure(bg='gray')
     canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     buttons_frame.pack(side=tk.RIGHT, fill=tk.Y, expand=False)
-    
-    buttons_frame.columnconfigure(0, weight=1)
-    buttons_frame.columnconfigure(1, weight=1)
+
     button_font = ('Arial', 12)
     button_width = 20  
     button_padx = 10   
     button_pady = 5 
     
-    next_generation_button = tk.Button(buttons_frame, text="Next Generation", font=button_font, width=button_width, command=lambda: next_generation(canvas))
-    next_generation_button.grid(row=0, column=0, padx=button_padx, pady=button_pady)
+    def make_button(name, text, row):
+        name = tk.Button(buttons_frame, text=text, font=button_font, width=button_width)
+        name.grid(row=row, column=0, padx=button_padx, pady=button_pady)
+        return name
     
+    next_generation_button = make_button(buttons_frame, "Next Generation", 0)
+    next_generation_button.configure(command=lambda: next_generation(canvas))
+
+
     grid_size_label = tk.Label(buttons_frame, text="Grid size", font=button_font, width=button_width, background='gray')
-    grid_size_label.grid(row=1,column=0, padx=button_padx)
-    plus = tk.Button(buttons_frame, text="+", font=button_font, width=button_width, command=lambda: update_canvas_size(increase=True))
-    plus.grid(row=2, column=0, padx=button_padx, pady=button_pady)
-    minus = tk.Button(buttons_frame, text="-", font=button_font, width=button_width, command=lambda: update_canvas_size(decrease=True))
-    minus.grid(row=3, column=0, padx=button_padx, pady=button_pady)
+    grid_size_label.grid(row=1,column=0, padx=button_padx)    
+    plus = make_button(buttons_frame, "+", 2)
+    plus.configure(command=lambda: update_canvas_size(increase=True))
+    minus = make_button(buttons_frame, "-", 3)
+    minus.configure(command=lambda: update_canvas_size(decrease=True))
     
     cell_sizes = [str(size) for size in range(5, 41,5)]
     cell_size_var = tk.StringVar()
@@ -379,29 +377,30 @@ def create_main_window():
     cell_size_combo.grid(row=5, column=0, padx=button_padx, pady=button_pady)
     cell_size_combo.bind("<<ComboboxSelected>>", lambda event: change_cell_size(cell_size_var))
     
-    refresh_rate = tk.DoubleVar()
     refresh_rate_label = tk.Label(buttons_frame,text="Refresh rate (ms)", background='gray' ,font=button_font, width=button_width)
     refresh_rate_label.grid(row=6, column=0, padx=button_padx)
-    refresh_rate_slider = ttk.Scale(buttons_frame ,from_=50, to=1000, length=button_width*10, variable=refresh_rate, command= lambda event: UPDATE_SETTINGS('REFRESH_RATE', int(refresh_rate_slider.get())))
+    refresh_rate_slider = ttk.Scale(buttons_frame ,from_=50, to=1000, length=button_width*10, command= lambda event: UPDATE_SETTINGS('REFRESH_RATE', int(refresh_rate_slider.get())))
     refresh_rate_slider.set(500)
     refresh_rate_slider.grid(row=7, column=0, padx=button_padx, pady=button_pady)
 
-    start_simulation_button = tk.Button(buttons_frame, text="Run simulation", font=button_font, width=button_width, command=start_simulation)
-    start_simulation_button.grid(row=8, column=0, padx=button_padx, pady=button_pady)
-    stop_simulation_button = tk.Button(buttons_frame, text="Stop simulation", font=button_font, width=button_width, command=stop_simulation)
-    stop_simulation_button.grid(row=9, column=0, padx=button_padx, pady=button_pady)
+    start_simulation_button = make_button(buttons_frame, "Run simulation", 8)
+    start_simulation_button.configure(command=start_simulation)
+
+    stop_simulation_button = make_button(buttons_frame, "Stop simulation", 9)
+    stop_simulation_button.configure(command=stop_simulation)
     stop_simulation_button.config(state='disabled')
-    expand_grid_button = tk.Button(buttons_frame, text="Expand grid", font=button_font, width=button_width, command= lambda: expand_grid())
-    expand_grid_button.grid(row=10, column=0, padx=button_padx, pady=button_pady)
 
-    kill_button = tk.Button(buttons_frame, text="Kill all cells", font=button_font, width=button_width, command=lambda: kill_all_cells(canvas))
-    kill_button.grid(row=11, column=0, padx=button_padx, pady=button_pady)
-    
-    settings_button = tk.Button(buttons_frame, text="Settings", font=button_font, width=button_width, command=lambda: make_settings_window(root))
-    settings_button.grid(row=12, column=0, padx=button_padx, pady=button_pady)
+    expand_grid_button = make_button(buttons_frame, "Expand grid", 10)
+    expand_grid_button.configure(command=expand_grid)
 
-    save_button = tk.Button(buttons_frame, text="Save / load", font=button_font, width=button_width, command=save)
-    save_button.grid(row=13, column=0, padx=button_padx, pady=button_pady)
+    kill_button = make_button(buttons_frame, "Kill all cells", 11)
+    kill_button.configure(command=lambda: kill_all_cells(canvas))
+
+    settings_button = make_button(buttons_frame, "Settings", 12)
+    settings_button.configure(command=lambda: make_settings_window(root))
+
+    save_button = make_button(buttons_frame, "Save / Load", 13)
+    save_button.configure(command=save)
     
     instructions = (
     "Conway's Game of Life Instructions:\n\n"
