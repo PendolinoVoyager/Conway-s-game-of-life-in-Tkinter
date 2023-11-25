@@ -16,7 +16,14 @@ def UPDATE_SETTINGS(key, value):
             values = value.strip().split()
             temp_list = []
             for item in list(map(int, values)):
-                if 9 > item > 0:
+                if 9 > item >= 0:
+                    if item == 0:
+                        if key == "CELLS_TO_STAY_ALIVE":
+                            temp_list.append(item)
+                        else:
+                            continue
+                    else:
+                        temp_list.append(item)
                     temp_list.append(item)
                 else:
                     continue

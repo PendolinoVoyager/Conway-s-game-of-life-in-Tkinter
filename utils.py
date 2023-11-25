@@ -232,7 +232,8 @@ def create_main_window():
         "alive neighbours an alive cell can have to still live.\n"
         "Cells to come to life describes the ammount of\n"
         "alive neighbours of a dead cell to make it come to life.\n"
-        "Format: numbers 1-8 seperated with a white space."
+        "Format: numbers 0-8 seperated with a white space.\n"
+        "Warning: cells to come to life = 0 is disabled."
         )
         instruction_label = tk.Label(popup, text=rules, justify='left', font=('Arial', 8), width=45)
         instruction_label.pack(pady=5)
