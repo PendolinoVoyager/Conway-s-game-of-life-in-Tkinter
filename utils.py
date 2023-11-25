@@ -40,7 +40,7 @@ def create_main_window():
         grid_state = get_new_grid_state(grid_state)
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
-        draw_from_tl_to_br(canvas)
+        draw_all(canvas)
     #Returns an altered grid state if grid size has been changed
     def get_new_grid_state(grid_state):
         new_size = SETTINGS['GRID_SIZE']
@@ -50,7 +50,7 @@ def create_main_window():
                 new_state[i][j] = grid_state[i][j]            
         return new_state
     def kill_all_cells(canvas):
-        nonlocal top_left, bottom_right
+        nonlocal top_left, bottom_right, grid_state
         bottom_right = [0, 0]
         top_left = (SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE'] - 1)
         grid_state = [[0 for _ in range(SETTINGS['GRID_SIZE'])] for _ in range(SETTINGS['GRID_SIZE'])]
@@ -63,7 +63,7 @@ def create_main_window():
         canvas.destroy()
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
-        draw_from_tl_to_br(canvas)
+        draw_all(canvas)
     #Canvas scroll work on linux, mouse 3 may work on windows
     def canvas_scroll(event):
         nonlocal canvas
@@ -75,7 +75,7 @@ def create_main_window():
         canvas.destroy()
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
-        draw_from_tl_to_br(canvas)
+        draw_all(canvas)
     #For expand grid button, changes grid size to fill according to cell size
     def expand_grid():
         grid_size = 630 // SETTINGS["CELL_SIZE"]
@@ -85,8 +85,8 @@ def create_main_window():
 #SIMULATION MODULE
     #The function called when we simulate a step in the game
     def next_generation(canvas):
-        nonlocal grid_state, top_left, bottom_right
-        grid_state, top_left, bottom_right, changed_cells = get_next_grid()
+        nonlocal top_left, bottom_right
+        top_left, bottom_right, changed_cells = get_next_grid()
         for cell in changed_cells:  
             draw_changed_cell(canvas, cell[0], cell[1])
     ''' Returns the new grid state, new corners and a list of changed cells to redraw'''
@@ -95,19 +95,22 @@ def create_main_window():
         new_top_left = [SETTINGS['GRID_SIZE'], SETTINGS['GRID_SIZE']]
         new_bottom_right = [0, 0]
         changed_cells = [] 
+        neighbor_counts = [[0 for _ in range(SETTINGS['GRID_SIZE'])] for _ in range(SETTINGS['GRID_SIZE'])]
         for i in range(max(top_left[0]-1, 0), min(bottom_right[0]+2, SETTINGS['GRID_SIZE'])):
             for j in range(max(top_left[1]-1, 0), min(bottom_right[1]+2, SETTINGS['GRID_SIZE'])):
-                new_state = judgment(i, j)
+                neighbor_counts[i][j] = count_alive_neighbours(i, j)
+        for i in range(max(top_left[0]-1, 0), min(bottom_right[0]+2, SETTINGS['GRID_SIZE'])):
+            for j in range(max(top_left[1]-1, 0), min(bottom_right[1]+2, SETTINGS['GRID_SIZE'])):
+                new_state = judgment(i, j, neighbor_counts[i][j])
                 if new_state != grid_state[i][j]:
                     changed_cells.append((i, j))
                     if new_state:
                         new_top_left = [min(new_top_left[0], i), min(new_top_left[1], j)]
                         new_bottom_right = [max(new_bottom_right[0], i), max(new_bottom_right[1], j)]
                     grid_state[i][j] = new_state
-        return grid_state, new_top_left, new_bottom_right, changed_cells
+        return  new_top_left, new_bottom_right, changed_cells
     #Judges if a cell stays alive, comes back to life or dies
-    def judgment(x, y):
-        alive_neighbours = count_alive_neighbours(x, y)
+    def judgment(x, y, alive_neighbours):
         if not grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_COME_TO_LIFE']:
             return 1
         if grid_state[x][y] and alive_neighbours in SETTINGS['CELLS_TO_STAY_ALIVE']:
@@ -119,7 +122,7 @@ def create_main_window():
         for i in range(max(0, x-1), min(SETTINGS['GRID_SIZE'], x+2)):
             for j in range(max(0, y-1), min(SETTINGS['GRID_SIZE'], y+2)):
                 alive_neighbors += grid_state[i][j]
-        if grid_state[x][y] == 1:
+        if grid_state[x][y]:
             alive_neighbors -= 1
         return alive_neighbors
 
@@ -167,12 +170,12 @@ def create_main_window():
                 x2 = x1 + SETTINGS['CELL_SIZE']
                 y2 = y1 + SETTINGS['CELL_SIZE']
                 canvas.create_rectangle(x1, y1, x2, y2, fill='white', outline="gray")
-    #Draws active cells in area pointed by top left and bottom right variables
-    #it's called for updating canvas size where grid_state doesn't change but the canvas does
-    def draw_from_tl_to_br(canvas):
+        
+    #Draws all cells. Important since top left and bottom right ignores the static cells
+    def draw_all(canvas):
         nonlocal top_left, bottom_right, grid_state
-        for i in range(max(top_left[0], 0), min(bottom_right[0]+1, SETTINGS['GRID_SIZE'])):
-            for j in range(max(top_left[1], 0), min(bottom_right[1]+1, SETTINGS['GRID_SIZE'])):
+        for i in range(SETTINGS['GRID_SIZE']):
+            for j in range(SETTINGS['GRID_SIZE']):
                 if grid_state[i][j]:
                     cell_size = SETTINGS['CELL_SIZE']
                     x1 = i * cell_size
@@ -253,7 +256,7 @@ def create_main_window():
         grid_state = get_new_grid_state(grid_state)
         canvas = make_canvas(canvas_frame)
         draw_grid(canvas)
-        draw_from_tl_to_br(canvas)
+        draw_all(canvas)
 ###################################################
 #Saving/loading sessions
     def save():

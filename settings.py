@@ -16,7 +16,7 @@ def UPDATE_SETTINGS(key, value):
             values = value.strip().split()
             temp_list = []
             for item in list(map(int, values)):
-                if 9 > item > -1:
+                if 9 > item > 0:
                     temp_list.append(item)
                 else:
                     continue
@@ -27,7 +27,7 @@ def UPDATE_SETTINGS(key, value):
     else:
         try:
             value = int(value)
-            if value < 0:
+            if value <= 0:
                 return
             if key == 'GRID_SIZE':
                 if value > 200:
